@@ -1,0 +1,46 @@
+#+OPTIONS: toc:nil
+#+BEGIN_EXAMPLE
+---
+tags:
+- emacs
+- org-mode
+- markdown
+---
+#+END_EXAMPLE
+
+* Org Mode 에서 Markdown 으로 내보내는 도구
+
+=ox-markdown.el= 은 org 형식의 파일을 md(Markdown) 형식으로 변환합니다. 이 패키지는 =Org mode= 에서 기본적으로 제공하는 [[https://github.com/emacsmirror/org/blob/master/lisp/ox-md.el][ox-md.el]] 를 사용하며, [[https://github.com/larstvei/ox-gfm][ox-gfm]] 을 참고하였습니다.
+
+주요 기능은 다음과 같습니다.
+
+- EXAMPLE 블럭은 변환하지 않고 그대로 출력합니다
+- SRC 블럭은 마크다운 포맷 #```# 을 사용합니다.
+- 테이블은 마크다운 포맷을 사용합니다.
+
+** 설치하기
+
+이 패키지는 이맥스 설정파일(init) 이나 =*scratch*= 에서 설치합니다.
+
+#+BEGIN_SRC lisp
+  (unless (package-installed-p 'ox-markdown)
+     (package-vc-install "https://github.com/Inforgra/ox-markdown.git"))
+#+END_SRC
+
+** 사용하기
+
+=Org mode= 에서 자동으로 로드하려면 다음과 같이 설정합니다.
+
+#+BEGIN_SRC lisp
+  (eval-after-load "org"
+    '(require 'ox-markdown nil t))
+#+END_SRC
+ 
+만약 =use-package= 를 사용한다면 다음과 같이 설정합니다.
+
+#+BEGIN_SRC lisp
+  (use-package org
+      :ensure t
+      :init
+      (require 'ox-markdown nil t))
+#+END_SRC
