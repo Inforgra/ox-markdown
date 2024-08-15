@@ -4,51 +4,57 @@
 
 (require 'ox-md)
 
+(defcustom ox-markdown-posts-path ""
+  "Publish to path."
+  :group 'ox-markdown
+  :type 'string)
+
 (org-export-define-derived-backend 'md 'html
   :filters-alist '((:filter-parse-tree . org-md-separate-elements))
   :menu-entry
   '(?m "Export to Markdown"
        ((?M "To temporary buffer"
-	    (lambda (a s v b) (org-md-export-as-markdown a s v)))
-	(?m "To file" (lambda (a s v b) (org-md-export-to-markdown a s v)))
-	(?o "To file and open"
-	    (lambda (a s v b)
-	      (if a (org-md-export-to-markdown t s v)
-		(org-open-file (org-md-export-to-markdown nil s v)))))))
+            (lambda (a s v b) (org-md-export-as-markdown a s v)))
+        (?m "To file" (lambda (a s v b) (org-md-export-to-markdown a s v)))
+        (?p "Publish to file" (lambda (a s v b) (my/org-export-to-markdown a s v)))
+        (?o "To file and open"
+            (lambda (a s v b)
+              (if a (org-md-export-to-markdown t s v)
+                (org-open-file (org-md-export-to-markdown nil s v)))))))
   :translate-alist '((bold . org-md-bold)
-		     (center-block . org-md--convert-to-html)
-		     (code . org-md-verbatim)
-		     (drawer . org-md--identity)
-		     (dynamic-block . org-md--identity)
-		     (example-block . org-markdown-example-block)
-		     (export-block . org-md-export-block)
-		     (fixed-width . org-md-example-block)
-		     (headline . org-md-headline)
-		     (horizontal-rule . org-md-horizontal-rule)
-		     (inline-src-block . org-md-verbatim)
-		     (inlinetask . org-md--convert-to-html)
-		     (inner-template . org-md-inner-template)
-		     (italic . org-md-italic)
-		     (item . org-md-item)
-		     (keyword . org-md-keyword)
+                     (center-block . org-md--convert-to-html)
+         (code . org-md-verbatim)
+         (drawer . org-md--identity)
+         (dynamic-block . org-md--identity)
+         (example-block . org-markdown-example-block)
+         (export-block . org-md-export-block)
+         (fixed-width . org-md-example-block)
+         (headline . org-md-headline)
+         (horizontal-rule . org-md-horizontal-rule)
+         (inline-src-block . org-md-verbatim)
+         (inlinetask . org-md--convert-to-html)
+         (inner-template . org-md-inner-template)
+         (italic . org-md-italic)
+         (item . org-md-item)
+         (keyword . org-md-keyword)
                      (latex-environment . org-md-latex-environment)
                      (latex-fragment . org-md-latex-fragment)
-		     (line-break . org-md-line-break)
-		     (link . org-md-link)
-		     (node-property . org-md-node-property)
-		     (paragraph . org-md-paragraph)
-		     (plain-list . org-md-plain-list)
-		     (plain-text . org-md-plain-text)
-		     (property-drawer . org-md-property-drawer)
-		     (quote-block . org-md-quote-block)
-		     (section . org-md-section)
-		     (special-block . org-md--convert-to-html)
-		     (src-block . org-markdown-src-block)
+         (line-break . org-md-line-break)
+         (link . org-md-link)
+         (node-property . org-md-node-property)
+         (paragraph . org-md-paragraph)
+         (plain-list . org-md-plain-list)
+         (plain-text . org-md-plain-text)
+         (property-drawer . org-md-property-drawer)
+         (quote-block . org-md-quote-block)
+         (section . org-md-section)
+         (special-block . org-md--convert-to-html)
+         (src-block . org-markdown-src-block)
          (table-cell . org-gfm-table-cell)
          (table-row . org-gfm-table-row)
          (table . org-gfm-table)
-		     (template . org-md-template)
-		     (verbatim . org-md-verbatim))
+         (template . org-md-template)
+         (verbatim . org-md-verbatim))
   :options-alist
   '((:md-footnote-format nil nil org-md-footnote-format)
     (:md-footnotes-section nil nil org-md-footnotes-section)
@@ -182,6 +188,46 @@ contextual information."
                       gfm-table-right-border "\n")))))
     (concat (and no-header (funcall build-dummy-header))
             (replace-regexp-in-string "\n\n" "\n" contents))))
+
+;;;###autoload
+(defun my/org-export-to-markdown (&optional async subtreep visible-only)
+  "Export current buffer to a Markdown file.
+
+If narrowing is active in the current buffer, only export its
+narrowed part.
+
+If a region is active, export that region.
+
+A non-nil optional argument ASYNC means the process should happen
+asynchronously.  The resulting file should be accessible through
+the `org-export-stack' interface.
+
+When optional argument SUBTREEP is non-nil, export the sub-tree
+at point, extracting information from the headline properties
+first.
+
+When optional argument VISIBLE-ONLY is non-nil, don't export
+contents of hidden elements.
+
+Return output file's name."
+  (interactive)
+  (let* ((filename (file-name-base (buffer-file-name)))
+         (in-dir (file-name-directory (buffer-file-name)))
+         (pub-dir (concat (file-name-as-directory ox-markdown-posts-path) filename "/"))
+         (outfile (concat pub-dir filename ".md")))
+    (unless (file-exists-p pub-dir)
+      (make-directory pub-dir))
+    (my/copy-files in-dir pub-dir)
+    (org-export-to-file 'md outfile async subtreep visible-only)))
+
+(defun my/copy-files (src-dir dst-dir)
+  "SRC-DIR DST-DIR."
+  (seq-do (lambda (file)
+            (message "%s%s %s" src-dir file dst-dir)
+            (unless (file-exists-p (concat dst-dir file))
+              (copy-file (concat src-dir file) dst-dir)))
+          (seq-filter (lambda (file) (seq-contains-p '("png" "jpg" "gif" ) (file-name-extension file)))
+                      (directory-files src-dir))))
 
 (provide 'ox-markdown)
 ;;; ox-markdown.el ends here
