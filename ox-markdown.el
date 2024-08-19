@@ -35,12 +35,13 @@
          (inlinetask . org-md--convert-to-html)
          (inner-template . org-md-inner-template)
          (italic . org-md-italic)
+
          (item . org-md-item)
          (keyword . org-md-keyword)
                      (latex-environment . org-md-latex-environment)
                      (latex-fragment . org-md-latex-fragment)
          (line-break . org-md-line-break)
-         (link . org-md-link)
+         (link . my/org-md-link)
          (node-property . org-md-node-property)
          (paragraph . org-md-paragraph)
          (plain-list . org-md-plain-list)
@@ -228,6 +229,88 @@ Return output file's name."
               (copy-file (concat src-dir file) dst-dir)))
           (seq-filter (lambda (file) (seq-contains-p '("png" "jpg" "gif" ) (file-name-extension file)))
                       (directory-files src-dir))))
+
+
+(defun my/org-md-link (link desc info)
+  "Transcode LINK object into Markdown format.
+DESC is the description part of the link, or the empty string.
+INFO is a plist holding contextual information.  See
+`org-export-data'."
+       (let* ((link-org-files-as-md
+               (lambda (raw-path)
+                 ;; Treat links to `file.org' as links to `file.md'.
+                 (if (string= ".org" (downcase (file-name-extension raw-path ".")))
+                     (concat (file-name-sans-extension raw-path) ".md")
+                   raw-path)))
+              (type (org-element-property :type link))
+              (raw-path (org-element-property :path link))
+              (path (cond
+                     ((member type '("http" "https" "ftp" "mailto"))
+                      (concat type ":" raw-path))
+                     ((string-equal  type "file")
+                      (org-export-file-uri (funcall link-org-files-as-md raw-path)))
+                     (t raw-path))))
+         (cond
+          ;; Link type is handled by a special function.
+          ((org-export-custom-protocol-maybe link desc 'md info))
+          ((member type '("custom-id" "id" "fuzzy"))
+           (let ((destination (if (string= type "fuzzy")
+                                  (org-export-resolve-fuzzy-link link info)
+                                (org-export-resolve-id-link link info))))
+             (pcase (org-element-type destination)
+               (`plain-text			; External file.
+                (let ((path (funcall link-org-files-as-md destination)))
+                  (if (not desc) (format "<%s>" path)
+                    (format "[%s](%s)" desc path))))
+               (`headline
+                (format
+                 "[%s](#%s)"
+                 ;; Description.
+                 (cond ((org-string-nw-p desc))
+                       ((org-export-numbered-headline-p destination info)
+                        (mapconcat #'number-to-string
+                                   (org-export-get-headline-number destination info)
+                                   "."))
+                       (t (org-export-data (org-element-property :title destination)
+                                           info)))
+                 ;; Reference.
+                 (or (org-element-property :CUSTOM_ID destination)
+                     (org-export-get-reference destination info))))
+               (_
+                (let ((description
+                       (or (org-string-nw-p desc)
+                           (let ((number (org-export-get-ordinal destination info)))
+                             (cond
+                              ((not number) nil)
+                              ((atom number) (number-to-string number))
+                              (t (mapconcat #'number-to-string number ".")))))))
+                  (when description
+                    (format "[%s](#%s)"
+                            description
+                            (org-export-get-reference destination info))))))))
+          ((org-export-inline-image-p link org-html-inline-image-rules)
+           (let ((path (cond ((not (string-equal type "file"))
+                              (concat type ":" raw-path))
+                             ((not (file-name-absolute-p raw-path)) raw-path)
+                             (t (expand-file-name raw-path))))
+                 (caption (org-export-data
+                           (org-export-get-caption
+                            (org-export-get-parent-element link))
+                           info)))
+             (format "![img](%s)"
+                     (if (not (org-string-nw-p caption)) path
+                       (format "%s \"%s\"" path caption)))))
+          ((string= type "coderef")
+           (format (org-export-get-coderef-format path desc)
+                   (org-export-resolve-coderef path info)))
+          ((string= type "radio")
+           (let ((destination (org-export-resolve-radio-link link info)))
+             (if (not destination) desc
+               (format "<a href=\"#%s\">%s</a>"
+                       (org-export-get-reference destination info)
+                       desc))))
+          (t (if (not desc) (format "<%s>" path)
+               (format "[%s](%s)" desc path))))))
 
 (provide 'ox-markdown)
 ;;; ox-markdown.el ends here
