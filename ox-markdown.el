@@ -41,7 +41,7 @@
                      (latex-environment . org-md-latex-environment)
                      (latex-fragment . org-md-latex-fragment)
          (line-break . org-md-line-break)
-         (link . my/org-md-link)
+         (link . org-md-link)
          (node-property . org-md-node-property)
          (paragraph . org-md-paragraph)
          (plain-list . org-md-plain-list)
