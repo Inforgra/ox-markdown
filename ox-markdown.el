@@ -297,9 +297,7 @@ INFO is a plist holding contextual information.  See
                            (org-export-get-caption
                             (org-export-get-parent-element link))
                            info)))
-             (format "![img](%s)"
-                     (if (not (org-string-nw-p caption)) path
-                       (format "%s \"%s\"" path caption)))))
+             (format "![%s](%s)" caption path)))
           ((string= type "coderef")
            (format (org-export-get-coderef-format path desc)
                    (org-export-resolve-coderef path info)))
